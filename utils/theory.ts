@@ -1,5 +1,10 @@
+
 import { STRINGS, INTERVAL_COLORS, FRETS, NOTES_SHARP } from '../constants';
 import { Marker } from '../types';
+
+export const getNoteName = (midi: number): string => {
+  return NOTES_SHARP[midi % 12];
+};
 
 /**
  * Calculates Fretboard Markers for a given root note and a set of intervals.

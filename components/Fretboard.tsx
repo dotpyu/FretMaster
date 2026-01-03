@@ -2,15 +2,17 @@
 import React, { useMemo } from 'react';
 import { STRINGS, FRETS, COLORS } from '../constants';
 import { Marker, HandFrame } from '../types';
+import { getNoteName } from '../utils/theory';
 
 interface FretboardProps {
   markers?: Marker[];
   overlayMarkers?: Marker[];
-  handFrame?: HandFrame; // New prop for hand frame visualization
+  handFrame?: HandFrame; 
   onFretClick?: (string: number, fret: number) => void;
   showInlays?: boolean;
   className?: string;
   range?: [number, number]; // min fret, max fret view
+  showNoteNames?: boolean; // New prop to toggle note names
 }
 
 const Fretboard: React.FC<FretboardProps> = ({ 
@@ -20,7 +22,8 @@ const Fretboard: React.FC<FretboardProps> = ({
   onFretClick, 
   showInlays = true,
   className = "",
-  range = [0, FRETS]
+  range = [0, FRETS],
+  showNoteNames = false
 }) => {
   const [minFret, maxFret] = range;
   const numFrets = maxFret - minFret + 1;
@@ -53,6 +56,15 @@ const Fretboard: React.FC<FretboardProps> = ({
     const drawX = m.fret === 0 ? x : x - fretSpacing / 2;
     const y = getStringY(sIndex);
     
+    // Calculate Note Name if needed
+    let noteName = '';
+    if (showNoteNames) {
+        const stringDef = STRINGS.find(s => s.id === m.string);
+        if (stringDef) {
+            noteName = getNoteName(stringDef.midi + m.fret);
+        }
+    }
+
     // Visual Styles based on properties
     const baseR = m.variant === 'small' ? 8 : (m.shape === 'square' ? 12 : 14);
     const r = isOverlay ? baseR - 2 : baseR;
@@ -62,15 +74,14 @@ const Fretboard: React.FC<FretboardProps> = ({
     
     // Style determinations
     const isHollow = m.variant === 'hollow';
-    // Overlay specific styles: thinner strokes, more transparent fills if filled
-    const fill = isHollow ? 'transparent' : (isOverlay ? `${finalColor}40` : finalColor); // Hex alpha 40 = 25%
+    const fill = isHollow ? 'transparent' : (isOverlay ? `${finalColor}40` : finalColor); 
     const stroke = isHollow ? finalColor : (m.isPulse ? '#ffffff' : (isOverlay ? finalColor : '#1e293b'));
     const strokeWidth = isHollow ? 2 : (m.isPulse ? 3 : (isOverlay ? 2 : 2));
     const labelColor = isOverlay ? finalColor : (isHollow ? finalColor : "white");
 
     return (
       <g key={`${isOverlay ? 'ov' : 'mk'}-${index}`} pointerEvents="none" style={{ opacity: finalOpacity, transition: 'all 0.15s ease-out' }}>
-        {/* Pulse Effect Ring (Active Notes) */}
+        {/* Pulse Effect Ring */}
         {m.isPulse && (
            <circle cx={drawX} cy={y} r={r + 6} fill="none" stroke={finalColor} strokeWidth="2" opacity="0.6">
               <animate attributeName="r" from={r} to={r+14} dur="0.8s" repeatCount="indefinite" />
@@ -78,7 +89,7 @@ const Fretboard: React.FC<FretboardProps> = ({
            </circle>
         )}
 
-        {/* Main Marker Circle/Square */}
+        {/* Marker Body */}
         {m.shape === 'square' ? (
              <rect 
                 x={drawX - r} y={y - r} 
@@ -98,37 +109,40 @@ const Fretboard: React.FC<FretboardProps> = ({
             />
         )}
         
-        {/* Hollow Ring Inner Effect (optional, gives depth) */}
         {isHollow && (
             <circle cx={drawX} cy={y} r={r-1} fill={finalColor} opacity="0.1" />
         )}
 
-        {/* Main Label (Interval or Note) */}
-        {m.label && !m.finger && m.variant !== 'small' && (
+        {/* Labels Logic */}
+        {/* If showNoteNames is true, we display the note name below the marker to avoid clutter */}
+        
+        {/* Main Center Label (Finger or Interval) */}
+        {(m.label || m.finger) && m.variant !== 'small' && (
           <text 
             x={drawX} y={y} dy="4" 
             textAnchor="middle" 
             fill={labelColor} 
-            fontSize={isOverlay ? "9" : "10"} 
+            fontSize={isOverlay ? "9" : "11"} 
             fontWeight="bold"
             className="font-mono"
           >
-            {m.label}
+            {m.finger || m.label}
           </text>
         )}
-
-        {/* Finger Number Label */}
-        {m.finger && m.variant !== 'small' && (
-           <text 
-            x={drawX} y={y} dy="4" 
-            textAnchor="middle" 
-            fill={labelColor} 
-            fontSize="11" 
-            fontWeight="bold"
-            className="font-mono"
-          >
-            {m.finger}
-          </text>
+        
+        {/* Secondary Note Name Label (Below) */}
+        {showNoteNames && noteName && !isOverlay && (
+             <text 
+                x={drawX} y={y + r + 12} 
+                textAnchor="middle" 
+                fill={isHollow ? finalColor : "#ffffff"} 
+                fontSize="10" 
+                fontWeight="bold"
+                className="font-mono"
+                style={{ textShadow: '0 1px 2px black' }}
+            >
+                {noteName}
+            </text>
         )}
       </g>
     );
@@ -138,14 +152,6 @@ const Fretboard: React.FC<FretboardProps> = ({
   const frameRect = useMemo(() => {
     if (!handFrame) return null;
     const { string, fret, span } = handFrame;
-    // string is Anchor String (usually low E = 6, or highest number)
-    // We want box to cover all strings used? Or just from anchor? 
-    // Usually span covers all 6 strings for 3NPS, but maybe less for triad.
-    // Let's assume full height for now, or from string 6 to 1.
-    
-    // Box dimensions
-    // X start: fret
-    // Width: span
     const startX = getFretX(fret) - fretSpacing; 
     const boxWidth = span * fretSpacing;
     const startY = getStringY(0) - 10;
@@ -188,35 +194,39 @@ const Fretboard: React.FC<FretboardProps> = ({
                 stroke={isNut ? "#d4d4d8" : COLORS.fretWire} 
                 strokeWidth={isNut ? 6 : 2} 
               />
-              <text 
-                x={x + fretSpacing / 2} 
-                y={height - 5} 
-                fill="#52525b" 
-                fontSize="12" 
-                textAnchor="middle"
-                className="font-mono"
-              >
-                {absoluteFret > 0 && absoluteFret}
-              </text>
+              {/* Enhanced Fret Numbers */}
+              {absoluteFret > 0 && (
+                  <text 
+                    x={x + fretSpacing / 2} 
+                    y={height - 5} 
+                    fill="#a1a1aa" 
+                    fontSize="13" 
+                    fontWeight="bold"
+                    textAnchor="middle"
+                    className="font-mono"
+                >
+                    {absoluteFret}
+                </text>
+              )}
             </React.Fragment>
            
           );
         })}
 
-        {/* Hand Frame Layer (Behind strings, above board) */}
+        {/* Hand Frame Layer */}
         {frameRect}
 
-        {/* Inlays */}
+        {/* Enhanced Inlays */}
         {inlays.map((inlay, i) => {
           const x = getFretX(inlay.fret) - fretSpacing / 2;
           const y = height / 2;
           return inlay.double ? (
             <g key={`inlay-${i}`}>
-               <circle cx={x} cy={y - stringSpacing} r="6" fill={COLORS.inlay} />
-               <circle cx={x} cy={y + stringSpacing} r="6" fill={COLORS.inlay} />
+               <circle cx={x} cy={y - stringSpacing} r="7" fill={COLORS.inlay} opacity="0.6" />
+               <circle cx={x} cy={y + stringSpacing} r="7" fill={COLORS.inlay} opacity="0.6" />
             </g>
           ) : (
-            <circle key={`inlay-${i}`} cx={x} cy={y} r="6" fill={COLORS.inlay} />
+            <circle key={`inlay-${i}`} cx={x} cy={y} r="7" fill={COLORS.inlay} opacity="0.6" />
           );
         })}
 
@@ -235,10 +245,10 @@ const Fretboard: React.FC<FretboardProps> = ({
           );
         })}
 
-        {/* Overlay Markers (Render First) */}
+        {/* Overlay Markers */}
         {overlayMarkers.map((m, i) => renderMarker(m, i, true))}
 
-        {/* Active Markers (Render On Top) */}
+        {/* Active Markers */}
         {markers.map((m, i) => renderMarker(m, i, false))}
 
         {/* Click Zones */}

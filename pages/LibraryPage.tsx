@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo } from 'react';
 import Fretboard from '../components/Fretboard';
-import { BookOpen, Play, Volume2, Music, Layers, Hexagon, Lightbulb, Dumbbell, Zap } from 'lucide-react';
+import { BookOpen, Play, Volume2, Music, Layers, Hexagon, Lightbulb, Dumbbell, Zap, Type } from 'lucide-react';
 import { LIBRARY_DATA } from '../data/library';
 import { calculateMarkers, getRootMidi } from '../utils/theory';
 import { audioEngine } from '../services/audio';
@@ -10,6 +11,7 @@ const LibraryPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("Core Vision");
   const [selectedDrillId, setSelectedDrillId] = useState<string>(LIBRARY_DATA["Core Vision"][0].id);
   const [rootNote, setRootNote] = useState('A'); // Default to A
+  const [showNoteNames, setShowNoteNames] = useState(false); // New state
 
   // Derived state
   const selectedDrill = useMemo(() => {
@@ -164,11 +166,22 @@ const LibraryPage: React.FC = () => {
                     <h3 className="font-bold text-slate-300 flex items-center text-sm uppercase tracking-wider">
                         <Layers size={16} className="mr-2 text-indigo-400" /> Fretboard Map
                     </h3>
-                    <span className="text-xs font-mono text-slate-500">ROOT: <span className="text-white">{rootNote}</span></span>
+                    
+                    <div className="flex items-center gap-4">
+                        <button 
+                            onClick={() => setShowNoteNames(!showNoteNames)}
+                            className={`flex items-center space-x-2 text-xs px-2 py-1 rounded border transition-colors ${showNoteNames ? 'bg-indigo-600 border-indigo-500 text-white' : 'border-slate-700 text-slate-400 hover:bg-slate-800'}`}
+                        >
+                            <Type size={12} />
+                            <span>Show Notes</span>
+                        </button>
+                        <span className="text-xs font-mono text-slate-500">ROOT: <span className="text-white">{rootNote}</span></span>
+                    </div>
                 </div>
                 <div className="p-6 overflow-x-auto">
                     <Fretboard 
                         markers={markers}
+                        showNoteNames={showNoteNames}
                         onFretClick={(s, f) => {
                             audioEngine.playTone(audioEngine.midiToFreq(40 + f + (s * 5)), 0.2); 
                         }}

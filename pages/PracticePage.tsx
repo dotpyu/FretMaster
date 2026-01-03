@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Fretboard from '../components/Fretboard';
 import TabStaff from '../components/TabStaff';
 import Transport from '../components/Transport';
-import { Target, Activity, Eye, Layers, ChevronDown, Music2, Box } from 'lucide-react';
+import { Target, Activity, Eye, Layers, ChevronDown, Music2, Box, Type } from 'lucide-react';
 import { Marker, SequenceNote } from '../types';
 import { audioEngine } from '../services/audio';
 import { INTERVAL_COLORS } from '../constants';
@@ -23,6 +24,7 @@ const PracticePage: React.FC = () => {
   // Drill Config
   const [learningMode, setLearningMode] = useState<'FULL' | 'GHOST' | 'BLIND'>('FULL');
   const [showPatternContext, setShowPatternContext] = useState(true);
+  const [showNoteNames, setShowNoteNames] = useState(false); // New state
 
   // Overlay Config
   const [overlayMode, setOverlayMode] = useState<'NONE' | 'CAGED' | '3NPS'>('NONE');
@@ -302,13 +304,23 @@ const PracticePage: React.FC = () => {
                     </button>
                 </div>
                 
-                 <button 
-                    onClick={() => setShowPatternContext(!showPatternContext)}
-                    className={`w-full flex items-center justify-center p-2 rounded border border-dashed transition-all ${showPatternContext ? 'border-slate-500 text-slate-300' : 'border-slate-800 text-slate-600'}`}
-                >
-                    <Layers size={14} className="mr-2" />
-                    <span className="text-xs font-bold uppercase">{showPatternContext ? "Hide Context" : "Show Context"}</span>
-                </button>
+                <div className="flex space-x-2">
+                    <button 
+                        onClick={() => setShowPatternContext(!showPatternContext)}
+                        className={`flex-1 flex items-center justify-center p-2 rounded border border-dashed transition-all ${showPatternContext ? 'border-slate-500 text-slate-300' : 'border-slate-800 text-slate-600'}`}
+                    >
+                        <Layers size={14} className="mr-2" />
+                        <span className="text-xs font-bold uppercase">{showPatternContext ? "Hide Context" : "Show Context"}</span>
+                    </button>
+                    
+                    <button 
+                        onClick={() => setShowNoteNames(!showNoteNames)}
+                         className={`flex-1 flex items-center justify-center p-2 rounded border transition-all ${showNoteNames ? 'bg-indigo-600/20 border-indigo-500 text-indigo-200' : 'border-slate-800 text-slate-600'}`}
+                    >
+                        <Type size={14} className="mr-2" />
+                        <span className="text-xs font-bold uppercase">Note Names</span>
+                    </button>
+                </div>
 
             </div>
 
@@ -372,6 +384,7 @@ const PracticePage: React.FC = () => {
                         markers={activeMarkers()}
                         overlayMarkers={overlayMarkers}
                         range={[0, 15]} // Extended range to see open strings and up to 15
+                        showNoteNames={showNoteNames}
                     />
                 </div>
 
